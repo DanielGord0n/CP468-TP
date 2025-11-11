@@ -1,0 +1,5 @@
+# Dependencies for N-Queens MIN-CONFLICTS implementation
+pandas
+matplotlib
+numpy
+
