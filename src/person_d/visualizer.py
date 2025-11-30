@@ -415,7 +415,8 @@ def create_poster(
 # Example usage when running this file directly
 # ---------------------------------------------------------------------
 
-from person_a.min_conflicts import min_conflicts
+from src.person_a.min_conflicts import min_conflicts
+
 
 
 def demo_with_person_a(n: int = 8) -> None:
