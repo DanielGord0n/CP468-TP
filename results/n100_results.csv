@@ -1,0 +1,6 @@
+run_id,n,iterations,execution_time,success,initial_conflicts,final_conflicts,conflict_delta,avg_conflicts_per_iteration,time_per_iteration
+1,100,212,0.077952,1,,0,,0.000000,0.000368
+2,100,129,0.041053,1,,0,,0.000000,0.000318
+3,100,172,0.048900,1,,0,,0.000000,0.000284
+4,100,125,0.043182,1,,0,,0.000000,0.000345
+5,100,183,0.053868,1,,0,,0.000000,0.000294
