@@ -56,7 +56,7 @@ def max_steps_for_n(n: int) -> int:
 
 def fmt(value, decimals: int = 6):
     if value is None:
-        return ""
+        return "0"
     if isinstance(value, float):
         return f"{value:.{decimals}f}"
     return value
@@ -64,7 +64,7 @@ def fmt(value, decimals: int = 6):
 
 def fast_conflict_sum(board):
     if board is None:
-        return None
+        return 0
     t = build_conflict_tables(board)
     total = 0
     for row in range(len(board)):
@@ -81,7 +81,7 @@ def run_single_experiment(n: int) -> dict:
         init_board, _ = min_conflicts(n, max_steps=1)
         initial_conflicts = fast_conflict_sum(init_board)
     else:
-        initial_conflicts = None
+        initial_conflicts = 0
 
     max_steps = max_steps_for_n(n)
 
@@ -92,21 +92,14 @@ def run_single_experiment(n: int) -> dict:
     if should_compute_conflicts(n):
         final_conflicts = fast_conflict_sum(board)
     else:
-        final_conflicts = None
+        final_conflicts = 0
 
-    conflict_delta = (
-        initial_conflicts - final_conflicts
-        if (initial_conflicts is not None and final_conflicts is not None)
-        else None
-    )
-
+    conflict_delta = initial_conflicts - final_conflicts
     success = 1 if (board is not None and is_solution(board)) else 0
 
-    time_per_iter = exec_time / steps if steps and steps > 0 else None
+    time_per_iter = exec_time / steps if steps and steps > 0 else 0
     avg_conflicts_per_iter = (
-        (final_conflicts / steps)
-        if (steps and steps > 0 and final_conflicts is not None)
-        else None
+        final_conflicts / steps if (steps and steps > 0) else 0
     )
 
     return {
@@ -176,15 +169,12 @@ def main():
                 total_time += result["execution_time"]
                 total_steps += result["iterations"]
 
-                if result["avg_conflicts_per_iter"] is not None:
-                    total_avg_conflicts += result["avg_conflicts_per_iter"]
-                    conflict_samples += 1
+                total_avg_conflicts += result["avg_conflicts_per_iter"]
+                conflict_samples += 1
 
         avg_time = total_time / runs
         avg_steps = total_steps / runs
-        avg_conflicts = (
-            total_avg_conflicts / conflict_samples if conflict_samples > 0 else None
-        )
+        avg_conflicts = total_avg_conflicts / conflict_samples
 
         print(f"\n=== Summary for n = {n} ===")
         print(f"Success rate: {total_success}/{runs}")
