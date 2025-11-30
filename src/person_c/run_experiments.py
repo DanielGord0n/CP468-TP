@@ -2,16 +2,17 @@
 Person C - Testing & Performance Analyst
 CP468 Term Project - MIN-CONFLICTS N-Queens
 
-Runs MIN-CONFLICTS (Person A) across multiple N values,
-records execution metrics, validates using Person B,
-and saves results into CSV files inside the results/ folder.
 
-Metrics collected:
+This module executes Person A’s MIN-CONFLICTS solver across multiple board
+sizes, validates solutions using Person B’s utilities, and records all
+performance metrics into CSV files under the results/ directory.
+
+Collected Metrics:
 - Execution time
 - Number of iterations until solution
-- Success rate over multiple runs
-- Average conflicts per iteration (where feasible)
-- Largest N that solves reliably in "reasonable" time
+- Success rate across repeated trials
+- Average conflicts per iteration (when applicable)
+- Largest N solvable within a reasonable time threshold
 """
 
 import os
@@ -31,21 +32,19 @@ from person_b.board_utils import (
 )
 
 N_VALUES = [10, 100, 1000, 10000, 100000, 1000000]
-BASE_RUNS_PER_N = 5
+BASE_RUNS_PER_N = 10
 REASONABLE_TIME_THRESHOLD = 5.0
 
 
 def runs_for_n(n: int) -> int:
-    """Choose number of runs depending on board size."""
     if n < 10_000:
         return BASE_RUNS_PER_N
     if n < 100_000:
-        return 3
+        return 5
     return 1
 
 
 def max_steps_for_n(n: int) -> int:
-    """Scale max_steps to prevent massive runtimes."""
     if n <= 1000:
         return 100_000
     if n <= 10_000:
@@ -56,7 +55,6 @@ def max_steps_for_n(n: int) -> int:
 
 
 def fmt(value, decimals: int = 6):
-    """Format values for CSV without scientific notation."""
     if value is None:
         return ""
     if isinstance(value, float):
@@ -65,7 +63,6 @@ def fmt(value, decimals: int = 6):
 
 
 def fast_conflict_sum(board):
-    """Compute total conflicting queen pairs in O(n)."""
     if board is None:
         return None
     t = build_conflict_tables(board)
@@ -76,12 +73,10 @@ def fast_conflict_sum(board):
 
 
 def should_compute_conflicts(n: int) -> bool:
-    """Avoid conflict computation for huge N."""
     return n <= 100_000
 
 
 def run_single_experiment(n: int) -> dict:
-    """Run MIN-CONFLICTS once and gather metrics."""
     if should_compute_conflicts(n):
         init_board, _ = min_conflicts(n, max_steps=1)
         initial_conflicts = fast_conflict_sum(init_board)
@@ -127,7 +122,6 @@ def run_single_experiment(n: int) -> dict:
 
 
 def main():
-    """Run experiments and write results to CSV."""
     os.makedirs("results", exist_ok=True)
     print("Running MIN-CONFLICTS experiments...\n")
 
