@@ -1,43 +1,38 @@
 """
-main.py - Integration script for CP468 N-Queens MIN-CONFLICTS project.
-Person E – Documentation & Integration Manager
+main.py - N-Queens Solver (Min-Conflicts)
 
-This script is the main entry point for:
-- Running a single MIN-CONFLICTS run for a given n (Person A + B + D)
-- Optionally visualizing the board (Person D)
-- Running the full experiment pipeline over all required n values (Person C)
+This script solves the N-Queens problem using an optimized Min-Conflicts algorithm.
+It supports both command-line arguments and interactive mode.
+
+Usage:
+    python3 main.py              # Interactive mode
+    python3 main.py --n 1000     # Solve for N=1000
 """
 
 import argparse
 import time
+import sys
 from typing import Optional
 
-# ---- Person A: MIN-CONFLICTS algorithm ----
+# Import core logic
 from src.person_a.min_conflicts import min_conflicts
-
-# ---- Person B: board validation ----
 from src.person_b.board_utils import is_solution
-
-# ---- Person D: visualization ----
 from src.person_d.visualizer import (
     visualize_board,
     board_row_to_col,
 )
 
-# ---- Person C: full experiment pipeline ----
-from src.person_c.run_experiments import main as run_experiments_main
-
-
-def run_single(
+def run_solver(
     n: int,
     visualize: bool = False,
-    max_steps: int = 100_000,
+    max_steps: int = 10_000_000,
     seed: Optional[int] = None,
 ) -> None:
     """
-    Run MIN-CONFLICTS once for a given n and optionally visualize the solution.
+    Run the solver for a given n and print results.
     """
-    print(f"\n=== Single MIN-CONFLICTS run for n = {n} ===")
+    print(f"\nSolving {n}-Queens...")
+    print("-" * 30)
 
     start = time.time()
     board, steps = min_conflicts(n=n, max_steps=max_steps, random_seed=seed)
@@ -45,102 +40,81 @@ def run_single(
     runtime = end - start
 
     if board is None:
-        print(f"✗ No solution found within {steps} steps.")
-        print(f"Runtime: {runtime:.4f} seconds")
+        print(f"✗ Failed to find solution within {steps} steps.")
+        print(f"  Time: {runtime:.4f}s")
         return
 
-    # board is in Person A's format: index = row, value = col
+    # Validate solution
     valid = is_solution(board)
+    status_icon = "✓" if valid else "✗"
+    status_text = "Valid" if valid else "Invalid"
 
-    print(f"✓ Solution found in {steps} steps")
-    print(f"✓ Valid solution (Person B check): {valid}")
-    print(f"Runtime: {runtime:.4f} seconds")
+    print(f"{status_icon} Solution found!")
+    print(f"  Steps: {steps:,}")
+    print(f"  Time:  {runtime:.4f}s")
+    print(f"  Check: {status_text}")
 
-    # For small n, show the board
-    if n <= 20:
-        print(f"Board (row -> col): {board}")
+    # Visualization
+    if visualize:
+        if n > 100:
+            print("\n[INFO] Visualization skipped (N > 100 is too large to plot).")
+        else:
+            print("\nGenerating visualization...")
+            try:
+                # Convert row->col to col->row for the visualizer
+                board_for_vis = board_row_to_col(board)
+                visualize_board(board_for_vis, n=n, show=True, save=True)
+            except Exception as e:
+                print(f"[WARN] Visualization failed: {e}")
 
-    if visualize and n <= 100:
+def get_user_input() -> int:
+    """Prompt user for N."""
+    while True:
         try:
-            # Convert row->col to col->row for the visualizer
-            board_for_vis = board_row_to_col(board)
-            visualize_board(board_for_vis, n=n, show=True, save=True)
-        except Exception as e:
-            print(f"[WARN] Visualization failed: {e}")
-
-
-def run_all_experiments() -> None:
-    """
-    Run the full experiment pipeline defined by Person C.
-
-    This will:
-    - Run MIN-CONFLICTS for all required n-values
-    - Validate solutions
-    - Record detailed metrics into CSV files under results/
-    - Print summaries to the console
-
-    All logic is delegated to src/person_c/run_experiments.py.
-    """
-    print("\n=== Running full experiment pipeline (Person C) ===\n")
-    run_experiments_main()
-    print("\n=== Experiment pipeline finished ===\n")
-
-
-def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="CP468 N-Queens with MIN-CONFLICTS – Integration Script (Person E)"
-    )
-
-    parser.add_argument(
-        "--n",
-        type=int,
-        default=10,
-        help="Board size n for a single run (default: 10).",
-    )
-
-    parser.add_argument(
-        "--run-all",
-        action="store_true",
-        help="Run the full experiment pipeline defined by Person C.",
-    )
-
-    parser.add_argument(
-        "--visualize",
-        action="store_true",
-        help="Visualize the solution for a single run (recommended only for small n <= 100).",
-    )
-
-    parser.add_argument(
-        "--max-steps",
-        type=int,
-        default=10_000_000,
-        help="Maximum number of steps for MIN-CONFLICTS in a single run (default: 10,000,000).",
-    )
-
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Optional random seed for a single MIN-CONFLICTS run.",
-    )
-
-    return parser
-
+            val = input("\nEnter number of queens (N): ").strip()
+            if not val:
+                continue
+            n = int(val)
+            if n < 4:
+                print("N must be at least 4.")
+                continue
+            return n
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
 
 def main() -> None:
-    parser = build_arg_parser()
+    parser = argparse.ArgumentParser(description="N-Queens Solver")
+    parser.add_argument("--n", type=int, help="Number of queens")
+    parser.add_argument("--visualize", action="store_true", help="Visualize solution (for N <= 100)")
+    parser.add_argument("--max-steps", type=int, default=10_000_000, help="Max steps")
+    parser.add_argument("--seed", type=int, help="Random seed")
+    
     args = parser.parse_args()
 
-    if args.run_all:
-        run_all_experiments()
+    if args.n is not None:
+        # Command line mode
+        run_solver(args.n, args.visualize, args.max_steps, args.seed)
     else:
-        run_single(
-            n=args.n,
-            visualize=args.visualize,
-            max_steps=args.max_steps,
-            seed=args.seed,
-        )
-
+        # Interactive mode
+        print("=== N-Queens Solver ===")
+        try:
+            while True:
+                n = get_user_input()
+                
+                # Ask for visualization if N is small
+                vis = False
+                if n <= 100:
+                    v_input = input("Visualize solution? (y/N): ").strip().lower()
+                    if v_input == 'y':
+                        vis = True
+                
+                run_solver(n, visualize=vis, max_steps=args.max_steps, seed=args.seed)
+                
+                again = input("\nSolve another? (y/N): ").strip().lower()
+                if again != 'y':
+                    break
+        except KeyboardInterrupt:
+            print("\nExiting.")
 
 if __name__ == "__main__":
     main()
