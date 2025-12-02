@@ -70,20 +70,63 @@ def is_solution(board: list[int]) -> bool:
     return True
 
 
-def random_board(n: int, rng: random.Random) -> list[int]:
+def greedy_board(n: int, rng: random.Random) -> tuple[list[int], list[int], list[int], list[int]]:
     """
-    Generate a random initial board configuration.
+    Generate an initial board using a greedy heuristic.
     
-    Places one queen in each row at a random column.
-    
-    Args:
-        n: The size of the board (number of queens).
-        rng: Random number generator instance for reproducibility.
+    Places queens row by row, choosing the column with minimum conflicts
+    at the time of placement. This provides a much better starting state
+    than random assignment.
     
     Returns:
-        A list of n integers representing random queen positions.
+        Tuple of (board, column_counts, diag1_counts, diag2_counts)
     """
-    return [rng.randint(0, n - 1) for _ in range(n)]
+    board = [-1] * n
+    column_counts = [0] * n
+    diag1_counts = [0] * (2 * n - 1)
+    diag2_counts = [0] * (2 * n - 1)
+    
+    # Candidate columns for random tie-breaking
+    # We'll reuse this list to avoid allocation
+    candidates = []
+    
+    for row in range(n):
+        min_conflicts = float('inf')
+        candidates.clear()
+        
+        # Sample a subset of columns to check for placement
+        # For the first row, all cols are 0 conflicts, so just pick random
+        if row == 0:
+            col = rng.randint(0, n - 1)
+            candidates.append(col)
+        else:
+            # Check a constant number of random columns plus some specific ones
+            # to keep initialization O(n) overall (O(1) per row)
+            # We check 50 random columns
+            n_samples = 50
+            for _ in range(n_samples):
+                col = rng.randint(0, n - 1)
+                
+                conflicts = (column_counts[col] + 
+                             diag1_counts[row - col + (n - 1)] + 
+                             diag2_counts[row + col])
+                
+                if conflicts < min_conflicts:
+                    min_conflicts = conflicts
+                    candidates.clear()
+                    candidates.append(col)
+                elif conflicts == min_conflicts:
+                    candidates.append(col)
+        
+        # Pick one of the best candidates
+        col = rng.choice(candidates)
+        
+        board[row] = col
+        column_counts[col] += 1
+        diag1_counts[row - col + (n - 1)] += 1
+        diag2_counts[row + col] += 1
+        
+    return board, column_counts, diag1_counts, diag2_counts
 
 
 def min_conflicts(
@@ -94,161 +137,190 @@ def min_conflicts(
     """
     Solve the N-Queens problem using the MIN-CONFLICTS algorithm.
     
-    This algorithm starts with a random configuration and iteratively moves
-    queens that are in conflict to positions with minimum conflicts, until
-    a solution is found or the maximum number of steps is reached.
-    
-    Args:
-        n: Board size (number of queens to place).
-        max_steps: Maximum number of repair steps before giving up.
-        random_seed: Optional seed for the random number generator.
-    
-    Returns:
-        A tuple (board, steps_taken) where:
-        - board: A valid N-Queens solution if found, otherwise None.
-        - steps_taken: Number of steps/iterations used.
-    
-    Algorithm:
-        1. Start with a random board (one queen per row).
-        2. Maintain conflict counts for columns and diagonals.
-        3. At each step:
-           - If no conflicts exist, return the solution.
-           - Otherwise, pick a conflicted row.
-           - Try moving that queen to the column with minimum conflicts.
-           - Update the board and conflict counts.
-        4. Return None if max_steps is exceeded.
-    
-    Time complexity: O(max_steps) with O(1) conflict updates per step.
+    Optimized for O(n) performance on large inputs using:
+    1. Greedy initialization
+    2. Constant-time repair steps (fixed sample size)
+    3. Efficient conflict tracking with inverse indices
     """
     # Initialize random number generator
     rng = random.Random(random_seed)
     
-    # Generate initial random board
-    board = random_board(n, rng)
+    # 1. Greedy Initialization (O(n))
+    board, column_counts, diag1_counts, diag2_counts = greedy_board(n, rng)
     
-    # Initialize conflict tracking data structures
-    # column_counts[c] = number of queens in column c
-    column_counts = [0] * n
+    # Inverse indices to track which queens are where
+    queens_in_col = [[] for _ in range(n)]
+    queens_in_diag1 = [[] for _ in range(2 * n - 1)]
+    queens_in_diag2 = [[] for _ in range(2 * n - 1)]
     
-    # diag1_counts[d] = number of queens on major diagonal d (row - col)
-    # Diagonal indices range from -(n-1) to (n-1), so we shift by (n-1)
-    diag1_counts = [0] * (2 * n - 1)
+    # Track empty columns for efficient sampling
+    # These are prime targets for moving queens
+    empty_columns = set(range(n))
     
-    # diag2_counts[d] = number of queens on minor diagonal d (row + col)
-    # Diagonal indices range from 0 to 2*(n-1)
-    diag2_counts = [0] * (2 * n - 1)
+    # Populate inverse indices and empty_columns (O(n))
+    for r in range(n):
+        c = board[r]
+        queens_in_col[c].append(r)
+        queens_in_diag1[r - c + (n - 1)].append(r)
+        queens_in_diag2[r + c].append(r)
+        if c in empty_columns:
+            empty_columns.remove(c)
     
-    # Populate initial conflict counts
-    for row in range(n):
-        col = board[row]
-        column_counts[col] += 1
-        diag1_counts[row - col + (n - 1)] += 1
-        diag2_counts[row + col] += 1
+    # Convert empty_columns to list for random sampling
+    empty_columns_list = list(empty_columns)
     
-    # Helper function to count conflicts for a queen at (row, col)
+    # Helper to add/remove from empty_columns_list efficiently
+    # We use a map to track indices in the list
+    empty_col_indices = {col: i for i, col in enumerate(empty_columns_list)}
+    
+    def add_empty_col(c):
+        if c not in empty_col_indices:
+            empty_col_indices[c] = len(empty_columns_list)
+            empty_columns_list.append(c)
+            
+    def remove_empty_col(c):
+        if c in empty_col_indices:
+            idx = empty_col_indices[c]
+            last = empty_columns_list[-1]
+            
+            # Swap with last
+            empty_columns_list[idx] = last
+            empty_col_indices[last] = idx
+            
+            empty_columns_list.pop()
+            del empty_col_indices[c]
+
+    # Helper to count conflicts for a queen at (row, col)
     def count_conflicts(row: int, col: int) -> int:
-        """
-        Count how many other queens conflict with a queen at (row, col).
-        
-        A conflict occurs when another queen shares the same column,
-        major diagonal, or minor diagonal.
-        """
-        conflicts = 0
-        
-        # Conflicts in the same column (subtract 1 to exclude self)
-        conflicts += column_counts[col] - 1
-        
-        # Conflicts on the same major diagonal (subtract 1 to exclude self)
-        conflicts += diag1_counts[row - col + (n - 1)] - 1
-        
-        # Conflicts on the same minor diagonal (subtract 1 to exclude self)
-        conflicts += diag2_counts[row + col] - 1
-        
-        return conflicts
+        return (column_counts[col] + 
+                diag1_counts[row - col + (n - 1)] + 
+                diag2_counts[row + col] - 3)
+
+    # 2. Initialize conflicted rows set (O(n))
+    conflicted_rows_set = set()
+    conflicted_rows_list = []
     
-    # Helper function to get all rows currently in conflict
-    def get_conflicted_rows() -> list[int]:
-        """Return a list of all rows where the queen is in conflict."""
-        conflicted = []
-        for row in range(n):
-            if count_conflicts(row, board[row]) > 0:
-                conflicted.append(row)
-        return conflicted
-    
-    # Main MIN-CONFLICTS loop
+    def add_conflict(r):
+        if r not in conflicted_rows_set:
+            conflicted_rows_set.add(r)
+            conflicted_rows_list.append(r)
+            
+    def remove_conflict_idx(idx):
+        r = conflicted_rows_list[idx]
+        conflicted_rows_set.remove(r)
+        last = conflicted_rows_list[-1]
+        conflicted_rows_list[idx] = last
+        conflicted_rows_list.pop()
+        return last
+
+    for r in range(n):
+        if count_conflicts(r, board[r]) > 0:
+            add_conflict(r)
+            
+    if not conflicted_rows_list:
+        return (board, 0)
+        
+    # 3. Repair Loop (O(max_steps))
     for step in range(max_steps):
-        # Check if current board is a solution
-        conflicted_rows = get_conflicted_rows()
-        
-        if not conflicted_rows:
-            # No conflicts - we have a solution!
+        if not conflicted_rows_list:
             return (board, step)
+            
+        # Pick a random conflicted row
+        rand_idx = rng.randint(0, len(conflicted_rows_list) - 1)
+        row = conflicted_rows_list[rand_idx]
         
-        # Choose a random conflicted row
-        row = rng.choice(conflicted_rows)
+        # Verify it's still conflicted
+        if count_conflicts(row, board[row]) == 0:
+            remove_conflict_idx(rand_idx)
+            continue
+            
         old_col = board[row]
         
-        # Find the column with minimum conflicts for this row
-        min_conflicts_value = float('inf')
+        # Find best column to move to
+        min_conflicts_val = float('inf')
         best_cols = []
         
-        for col in range(n):
-            # Temporarily remove the queen from its current position
-            if col == old_col:
-                # If considering the current position, conflicts are already counted
-                conflicts = count_conflicts(row, col)
-            else:
-                # Temporarily move the queen to compute conflicts
-                # Remove from old position
-                column_counts[old_col] -= 1
-                diag1_counts[row - old_col + (n - 1)] -= 1
-                diag2_counts[row + old_col] -= 1
+        # Sample strategy:
+        # 1. Always check current column (baseline)
+        # 2. Check some empty columns (high priority)
+        # 3. Check some random columns (exploration)
+        
+        candidates = set()
+        candidates.add(old_col)
+        
+        # Sample from empty columns (up to 20)
+        if empty_columns_list:
+            k = min(20, len(empty_columns_list))
+            # random.sample is O(k)
+            for c in rng.sample(empty_columns_list, k):
+                candidates.add(c)
                 
-                # Add to new position
-                column_counts[col] += 1
-                diag1_counts[row - col + (n - 1)] += 1
-                diag2_counts[row + col] += 1
-                
-                # Count conflicts at new position
-                conflicts = count_conflicts(row, col)
-                
-                # Restore old position
-                column_counts[col] -= 1
-                diag1_counts[row - col + (n - 1)] -= 1
-                diag2_counts[row + col] -= 1
-                
-                column_counts[old_col] += 1
-                diag1_counts[row - old_col + (n - 1)] += 1
-                diag2_counts[row + old_col] += 1
+        # Sample from random columns (up to 10)
+        for _ in range(10):
+            candidates.add(rng.randint(0, n - 1))
             
-            # Track columns with minimum conflicts
-            if conflicts < min_conflicts_value:
-                min_conflicts_value = conflicts
+        for col in candidates:
+            c_count = column_counts[col]
+            d1_count = diag1_counts[row - col + (n - 1)]
+            d2_count = diag2_counts[row + col]
+            
+            if col == old_col:
+                conflicts = (c_count + d1_count + d2_count) - 3
+            else:
+                conflicts = (c_count + d1_count + d2_count)
+            
+            if conflicts < min_conflicts_val:
+                min_conflicts_val = conflicts
                 best_cols = [col]
-            elif conflicts == min_conflicts_value:
+            elif conflicts == min_conflicts_val:
                 best_cols.append(col)
         
-        # Choose randomly among columns with minimum conflicts
         new_col = rng.choice(best_cols)
         
-        # Move the queen to the new column
         if new_col != old_col:
-            # Remove from old position
+            # Move the queen
+            
+            # 1. Add new conflicts
+            for other_r in queens_in_col[new_col]:
+                add_conflict(other_r)
+            for other_r in queens_in_diag1[row - new_col + (n - 1)]:
+                add_conflict(other_r)
+            for other_r in queens_in_diag2[row + new_col]:
+                add_conflict(other_r)
+            
+            # 2. Update counts
             column_counts[old_col] -= 1
             diag1_counts[row - old_col + (n - 1)] -= 1
             diag2_counts[row + old_col] -= 1
             
-            # Add to new position
             column_counts[new_col] += 1
             diag1_counts[row - new_col + (n - 1)] += 1
             diag2_counts[row + new_col] += 1
             
-            # Update board
+            # 3. Update inverse indices
+            try:
+                queens_in_col[old_col].remove(row)
+                queens_in_diag1[row - old_col + (n - 1)].remove(row)
+                queens_in_diag2[row + old_col].remove(row)
+            except ValueError:
+                pass
+                
+            queens_in_col[new_col].append(row)
+            queens_in_diag1[row - new_col + (n - 1)].append(row)
+            queens_in_diag2[row + new_col].append(row)
+            
+            # 4. Update empty columns
+            if column_counts[old_col] == 0:
+                add_empty_col(old_col)
+            if column_counts[new_col] == 1: # Was 0, now 1
+                remove_empty_col(new_col)
+            
             board[row] = new_col
-    
-    # Max steps exceeded without finding a solution
+            
+    if is_solution(board):
+        return (board, max_steps)
+            
     return (None, max_steps)
-
 
 def main():
     """

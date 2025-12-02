@@ -20,11 +20,28 @@ Assumptions
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Sequence, Optional
+from typing import Iterable, Sequence, Optional, Any
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+    plt = None
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    np = None
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+    pd = None
 
 # ---------------------------------------------------------------------
 # General config
@@ -39,13 +56,16 @@ RESULTS_DIR.mkdir(exist_ok=True)
 # Helpers
 # ---------------------------------------------------------------------
 
-def _board_to_array(board: Sequence[int], n: Optional[int] = None) -> np.ndarray:
+def _board_to_array(board: Sequence[int], n: Optional[int] = None) -> Any:
     """
     Convert 1D board representation to an n x n numpy array with
     1 where a queen is placed, 0 otherwise.
 
     Assumes board[col] = row.
     """
+    if not HAS_NUMPY:
+        raise ImportError("numpy is required for board conversion")
+
     if n is None:
         n = len(board)
 
@@ -71,13 +91,26 @@ def ascii_board(board: Sequence[int], n: Optional[int] = None) -> str:
     if n is None:
         n = len(board)
 
-    arr = _board_to_array(board, n)
     lines: list[str] = []
-    for r in range(n):
-        line = []
-        for c in range(n):
-            line.append("Q" if arr[r, c] == 1 else ".")
-        lines.append(" ".join(line))
+    
+    if HAS_NUMPY:
+        arr = _board_to_array(board, n)
+        for r in range(n):
+            line = []
+            for c in range(n):
+                line.append("Q" if arr[r, c] == 1 else ".")
+            lines.append(" ".join(line))
+    else:
+        # Pure python fallback
+        # Create grid
+        grid = [["." for _ in range(n)] for _ in range(n)]
+        for col, row in enumerate(board):
+            if 0 <= row < n:
+                grid[row][col] = "Q"
+        
+        for r in range(n):
+            lines.append(" ".join(grid[r]))
+            
     return "\n".join(lines)
 
 
@@ -125,6 +158,10 @@ def visualize_board(
     """
     if n is None:
         n = len(board)
+
+    if not HAS_MATPLOTLIB or not HAS_NUMPY:
+        print("[WARN] matplotlib or numpy not installed. Skipping visualization.")
+        return Path("results") / (filename or f"board_n{n}.png")
 
     arr = _board_to_array(board, n)
 
@@ -184,7 +221,7 @@ def visualize_board(
 # ---------------------------------------------------------------------
 
 def plot_performance(
-    data: pd.DataFrame,
+    data: Any,
     save: bool = True,
     show: bool = True,
     filename: str = "performance.png",
@@ -197,6 +234,10 @@ def plot_performance(
         - 'runtime' (seconds)
         - 'iterations' (min-conflicts steps)
     """
+    if not HAS_PANDAS or not HAS_MATPLOTLIB:
+        print("[WARN] pandas or matplotlib not installed. Skipping performance plot.")
+        return Path("results") / filename
+
     required_cols = ["n", "runtime", "iterations"]
     for col in required_cols:
         if col not in data.columns:
@@ -205,6 +246,10 @@ def plot_performance(
             )
 
     data = data.sort_values("n")
+
+    if not HAS_MATPLOTLIB:
+        print("[WARN] matplotlib not installed. Skipping performance plot.")
+        return Path("results") / filename
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
@@ -259,6 +304,10 @@ def plot_conflicts_over_time(
     conflicts = list(conflict_history)
     steps = list(range(len(conflicts)))
 
+    if not HAS_MATPLOTLIB:
+        print("[WARN] matplotlib not installed. Skipping conflict plot.")
+        return Path("results") / filename
+
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.plot(steps, conflicts, marker=".")
     ax.set_xlabel("Step")
@@ -287,7 +336,7 @@ def plot_conflicts_over_time(
 def create_poster(
     solution: Sequence[int],
     n: int,
-    performance_df: Optional[pd.DataFrame] = None,
+    performance_df: Optional[Any] = None,
     conflict_history: Optional[Iterable[int]] = None,
     filename: Optional[str] = None,
     show: bool = False,
@@ -306,6 +355,10 @@ def create_poster(
 
     has_perf = performance_df is not None
     has_conf = conflict_history is not None
+
+    if not HAS_MATPLOTLIB:
+        print("[WARN] matplotlib not installed. Skipping poster generation.")
+        return Path("results") / filename
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     ax_board, ax_perf, ax_conf, ax_text = axes.flatten()

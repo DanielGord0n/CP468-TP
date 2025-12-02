@@ -113,8 +113,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=100_000,
-        help="Maximum number of steps for MIN-CONFLICTS in a single run (default: 100000).",
+        default=10_000_000,
+        help="Maximum number of steps for MIN-CONFLICTS in a single run (default: 10,000,000).",
     )
 
     parser.add_argument(

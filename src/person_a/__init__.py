@@ -17,6 +17,6 @@ Usage:
         print(f"Valid solution found in {steps} steps!")
 """
 
-from .min_conflicts import min_conflicts, is_solution, random_board
+from .min_conflicts import min_conflicts, is_solution, greedy_board
 
-__all__ = ['min_conflicts', 'is_solution', 'random_board']
+__all__ = ['min_conflicts', 'is_solution', 'greedy_board']
