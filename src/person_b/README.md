@@ -28,10 +28,7 @@ The board should be represented efficiently to handle large n values.
 
 ## Usage
 ```python
-from person_b.board_utils import initialize_board, is_solution, count_conflicts
-
-# Initialize random board
-board = initialize_board(n=8)
+from src.person_b.board_utils import is_solution, count_conflicts
 
 # Check if solution
 if is_solution(board):

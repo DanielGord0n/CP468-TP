@@ -46,17 +46,17 @@ Each CSV should include columns:
 
 ## Usage
 ```python
-from person_a.min_conflicts import min_conflicts
-from person_b.board_utils import is_solution
+from src.person_a.min_conflicts import min_conflicts
+from src.person_b.board_utils import is_solution
 import time
 
 # Run experiment for n=100
 start_time = time.time()
-solution = min_conflicts(n=100, max_steps=10000)
+solution, steps = min_conflicts(n=100, max_steps=10000)
 execution_time = time.time() - start_time
 
 # Verify solution
-if is_solution(solution):
+if solution and is_solution(solution):
     print(f"Solution found in {execution_time:.2f} seconds")
 ```
 

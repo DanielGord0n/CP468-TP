@@ -7,7 +7,7 @@ algorithm for solving the N-Queens problem.
 Main exports:
     - min_conflicts: Main algorithm function
     - is_solution: Solution validator
-    - random_board: Random board generator
+    - greedy_board: Greedy board generator
 
 Usage:
     from person_a import min_conflicts, is_solution

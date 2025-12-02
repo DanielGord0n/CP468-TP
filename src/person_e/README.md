@@ -44,13 +44,13 @@ Create a main script that demonstrates:
 ## Usage Example
 ```python
 # Main integration script
-from person_a.min_conflicts import min_conflicts
-from person_b.board_utils import is_solution
-from person_d.visualizer import visualize_board
-from person_c.experiments import run_experiments
+from src.person_a.min_conflicts import min_conflicts
+from src.person_b.board_utils import is_solution
+from src.person_d.visualizer import visualize_board
+from src.person_c.run_experiments import main as run_experiments
 
 # Run complete pipeline
-run_experiments([10, 100, 1000, 10000, 100000, 1000000])
+run_experiments()
 ```
 
 ## Submission Checklist

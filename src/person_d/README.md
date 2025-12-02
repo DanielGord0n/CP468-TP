@@ -30,12 +30,13 @@ Builds graphical outputs and the poster for demo.
 
 ## Usage
 ```python
-from person_d.visualizer import visualize_board, plot_performance
-from person_a.min_conflicts import min_conflicts
+from src.person_d.visualizer import visualize_board, plot_performance
+from src.person_a.min_conflicts import min_conflicts
 
 # Solve and visualize
-solution = min_conflicts(n=8, max_steps=1000)
-visualize_board(solution, n=8)
+solution, steps = min_conflicts(n=8, max_steps=1000)
+if solution:
+    visualize_board(solution, n=8)
 
 # Plot performance data from CSV
 import pandas as pd
