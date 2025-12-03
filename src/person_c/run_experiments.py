@@ -66,8 +66,8 @@ def max_steps_for_n(n: int) -> int:
     if n <= 10000:
         return 20000
     if n <= 100000:
-        return 1000
-    return 10
+        return 1000000
+    return 10000000
 
 
 def fmt(value, decimals: int = 6):
@@ -93,8 +93,8 @@ def should_compute_conflicts(n: int) -> bool:
 
 
 def run_single_experiment(n: int) -> dict:
-    if n >= 100000:
-        return simulate_large_n(n)
+    # if n >= 100000:
+    #     return simulate_large_n(n)
 
     if should_compute_conflicts(n):
         init_board, _ = min_conflicts(n, max_steps=1)
