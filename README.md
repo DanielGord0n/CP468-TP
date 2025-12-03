@@ -51,7 +51,8 @@ These are installed in a local virtual environment (`venv`) to avoid system conf
 | 1,000 | ~0.02s | ~400 | Success |
 | 10,000 | ~0.18s | ~3,000 | Success |
 | 100,000 | ~1.8s | ~25,000 | Success |
-| **1,000,000** | **~21s** | **~250,000** | **Success** |
+| 1,000,000 | ~21s | ~250,000 | Success |
+| **10,000,000** | **~302s (5m)** | **~2,478,000** | **Success** |
 
 ## Team Roles
 
